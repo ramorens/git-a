@@ -190,7 +190,8 @@
     </div>
 
     <script>
-        const API_BASE = window.location.origin;
+        // 后端API地址 - 部署后端到阿里云Serverless后，将此地址改为你的函数计算URL
+        const API_BASE = 'http://localhost:5000';
         let selectedFile = null;
 
         const uploadArea = document.getElementById('uploadArea');
