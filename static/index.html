@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI智能简历分析系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2rem;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        .card h2 {
+            color: #333;
+            margin-bottom: 16px;
+            font-size: 1.2rem;
+        }
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover { border-color: #667eea; background: #f8f9ff; }
+        .upload-area.dragover { border-color: #667eea; background: #f0f3ff; }
+        .upload-icon { font-size: 48px; margin-bottom: 10px; }
+        #fileInput { display: none; }
+        .file-name { color: #667eea; font-weight: 600; margin-top: 10px; }
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: vertical;
+        }
+        textarea:focus { outline: none; border-color: #667eea; }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 16px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(102,126,234,0.4); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .loading { display: none; text-align: center; padding: 20px; }
+        .loading.show { display: block; }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .result { display: none; }
+        .result.show { display: block; }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .info-item {
+            background: #f8f9ff;
+            padding: 12px;
+            border-radius: 8px;
+        }
+        .info-item label { color: #666; font-size: 12px; display: block; margin-bottom: 4px; }
+        .info-item span { color: #333; font-weight: 500; }
+        .score-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        .score-value { font-size: 48px; font-weight: bold; }
+        .score-label { opacity: 0.9; }
+        .score-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .score-item { background: rgba(255,255,255,0.2); padding: 12px; border-radius: 8px; }
+        .score-item .value { font-size: 24px; font-weight: bold; }
+        .score-item .label { font-size: 12px; opacity: 0.9; }
+        .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .tag {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+        }
+        .tag.missing { background: #ffebee; color: #c62828; }
+        .analysis { background: #f5f5f5; padding: 16px; border-radius: 8px; margin-top: 16px; line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI智能简历分析系统</h1>
+        
+        <div class="card">
+            <h2>📄 上传简历</h2>
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <p>点击或拖拽上传PDF简历</p>
+                <p class="file-name" id="fileName"></p>
+            </div>
+            <input type="file" id="fileInput" accept=".pdf">
+        </div>
+        
+        <div class="card">
+            <h2>💼 岗位需求（可选）</h2>
+            <textarea id="jobRequirements" placeholder="请输入岗位需求描述，例如：&#10;- 3年以上Python开发经验&#10;- 熟悉Flask/Django框架&#10;- 有AI/机器学习项目经验优先"></textarea>
+        </div>
+        
+        <button class="btn" id="analyzeBtn" disabled>开始分析</button>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>AI正在分析简历，请稍候...</p>
+        </div>
+        
+        <div class="result" id="result">
+            <div class="card">
+                <h2>👤 基本信息</h2>
+                <div class="info-grid" id="basicInfo"></div>
+            </div>
+            
+            <div class="card" id="matchCard" style="display:none;">
+                <h2>📊 匹配分析</h2>
+                <div class="score-card">
+                    <div class="score-label">综合匹配度</div>
+                    <div class="score-value" id="overallScore">--</div>
+                    <div class="score-grid">
+                        <div class="score-item">
+                            <div class="value" id="skillScore">--</div>
+                            <div class="label">技能匹配</div>
+                        </div>
+                        <div class="score-item">
+                            <div class="value" id="expScore">--</div>
+                            <div class="label">经验相关</div>
+                        </div>
+                        <div class="score-item">
+                            <div class="value" id="eduScore">--</div>
+                            <div class="label">学历匹配</div>
+                        </div>
+                    </div>
+                </div>
+                <h3 style="margin-bottom:8px;">✅ 匹配技能</h3>
+                <div class="tags" id="matchedSkills"></div>
+                <h3 style="margin:16px 0 8px;">❌ 缺失技能</h3>
+                <div class="tags" id="missingSkills"></div>
+                <div class="analysis" id="analysis"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let selectedFile = null;
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+        function handleFile(file) {
+            if (file.type !== 'application/pdf') { alert('请上传PDF格式文件'); return; }
+            selectedFile = file;
+            fileName.textContent = file.name;
+            analyzeBtn.disabled = false;
+        }
+
+        analyzeBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+            
+            loading.classList.add('show');
+            result.classList.remove('show');
+            analyzeBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('job_requirements', document.getElementById('jobRequirements').value);
+
+            try {
+                const res = await fetch(`${API_BASE}/api/analyze-resume`, { method: 'POST', body: formData });
+                const data = await res.json();
+                
+                if (data.success) {
+                    displayResult(data.data);
+                } else {
+                    alert('分析失败: ' + (data.error || '未知错误'));
+                }
+            } catch (err) {
+                alert('请求失败: ' + err.message);
+            } finally {
+                loading.classList.remove('show');
+                analyzeBtn.disabled = false;
+            }
+        });
+
+        function displayResult(data) {
+            const info = data.resume_info || {};
+            const basicInfo = document.getElementById('basicInfo');
+            basicInfo.innerHTML = `
+                <div class="info-item"><label>姓名</label><span>${info.name || '-'}</span></div>
+                <div class="info-item"><label>电话</label><span>${info.phone || '-'}</span></div>
+                <div class="info-item"><label>邮箱</label><span>${info.email || '-'}</span></div>
+                <div class="info-item"><label>地址</label><span>${info.address || '-'}</span></div>
+                <div class="info-item"><label>求职意向</label><span>${info.job_intention || '-'}</span></div>
+                <div class="info-item"><label>工作年限</label><span>${info.work_years || '-'}</span></div>
+                <div class="info-item"><label>学历</label><span>${info.education || '-'}</span></div>
+            `;
+
+            const matchCard = document.getElementById('matchCard');
+            if (data.match_data && data.match_data.match_result) {
+                const match = data.match_data.match_result;
+                document.getElementById('overallScore').textContent = match.overall_score || '--';
+                document.getElementById('skillScore').textContent = match.skill_match || '--';
+                document.getElementById('expScore').textContent = match.experience_relevance || '--';
+                document.getElementById('eduScore').textContent = match.education_match || '--';
+                
+                document.getElementById('matchedSkills').innerHTML = (match.matched_skills || [])
+                    .map(s => `<span class="tag">${s}</span>`).join('') || '<span style="color:#999">无</span>';
+                document.getElementById('missingSkills').innerHTML = (match.missing_skills || [])
+                    .map(s => `<span class="tag missing">${s}</span>`).join('') || '<span style="color:#999">无</span>';
+                document.getElementById('analysis').textContent = match.analysis || '';
+                
+                matchCard.style.display = 'block';
+            } else {
+                matchCard.style.display = 'none';
+            }
+
+            result.classList.add('show');
+        }
+    </script>
+</body>
+</html>

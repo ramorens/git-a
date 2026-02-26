@@ -1,0 +1,33 @@
+edition: 3.0.0
+name: resume-analyzer
+access: default
+
+vars:
+  region: cn-hangzhou
+
+resources:
+  resume-analyzer:
+    component: fc3
+    props:
+      region: ${vars.region}
+      functionName: resume-analyzer
+      description: AI智能简历分析系统
+      runtime: python3.10
+      code: ./
+      handler: index.handler
+      memorySize: 512
+      timeout: 60
+      environmentVariables:
+        DASHSCOPE_API_KEY: ${env.DASHSCOPE_API_KEY}
+        REDIS_HOST: ${env.REDIS_HOST}
+        REDIS_PORT: ${env.REDIS_PORT}
+        REDIS_PASSWORD: ${env.REDIS_PASSWORD}
+      triggers:
+        - triggerName: httpTrigger
+          triggerType: http
+          triggerConfig:
+            authType: anonymous
+            methods:
+              - GET
+              - POST
+              - OPTIONS
